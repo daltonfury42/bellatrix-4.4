@@ -358,13 +358,6 @@ err:
 	return ret;
 }
 
-int mmc_send_ext_csd(struct mmc_card *card, u8 *ext_csd)
-{
-	return mmc_send_cxd_data(card, card->host, MMC_SEND_EXT_CSD,
-			ext_csd, 512);
-}
-EXPORT_SYMBOL_GPL(mmc_send_ext_csd);
-
 int mmc_send_cid(struct mmc_host *host, u32 *cid)
 {
 	if (mmc_host_is_spi(host))
@@ -543,7 +536,7 @@ int __mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
 	else if (index == EXT_CSD_BKOPS_START)
 		cmd.bkops_busy = true;
 
-	err = mmc_wait_for_cmd(host, &cmd, MMC_CMD_RETRIES);
+	err = mmc_wait_for_cmd(host, &cmd, 0);
 	if (err)
 		goto out;
 

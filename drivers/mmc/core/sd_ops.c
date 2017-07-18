@@ -27,8 +27,8 @@ int mmc_app_cmd(struct mmc_host *host, struct mmc_card *card)
 	int err;
 	struct mmc_command cmd = {};
 
-	BUG_ON(!host);
-	BUG_ON(card && (card->host != host));
+	if (WARN_ON(card && card->host != host))
+		return -EINVAL;
 
 	cmd.opcode = MMC_APP_CMD;
 
@@ -52,36 +52,17 @@ int mmc_app_cmd(struct mmc_host *host, struct mmc_card *card)
 }
 EXPORT_SYMBOL_GPL(mmc_app_cmd);
 
-/**
- *	mmc_wait_for_app_cmd - start an application command and wait for
- 			       completion
- *	@host: MMC host to start command
- *	@card: Card to send MMC_APP_CMD to
- *	@cmd: MMC command to start
- *	@retries: maximum number of retries
- *
- *	Sends a MMC_APP_CMD, checks the card response, sends the command
- *	in the parameter and waits for it to complete. Return any error
- *	that occurred while the command was executing.  Do not attempt to
- *	parse the response.
- */
-int mmc_wait_for_app_cmd(struct mmc_host *host, struct mmc_card *card,
-	struct mmc_command *cmd, int retries)
+static int mmc_wait_for_app_cmd(struct mmc_host *host, struct mmc_card *card,
+				struct mmc_command *cmd)
 {
 	struct mmc_request mrq = {};
-
-	int i, err;
-
-	BUG_ON(!cmd);
-	BUG_ON(retries < 0);
-
-	err = -EIO;
+	int i, err = -EIO;
 
 	/*
 	 * We have to resend MMC_APP_CMD for each attempt so
 	 * we cannot use the retries field in mmc_command.
 	 */
-	for (i = 0;i <= retries;i++) {
+	for (i = 0; i <= MMC_CMD_RETRIES; i++) {
 		err = mmc_app_cmd(host, card);
 		if (err) {
 			/* no point in retrying; no APP commands allowed */
@@ -116,14 +97,9 @@ int mmc_wait_for_app_cmd(struct mmc_host *host, struct mmc_card *card,
 	return err;
 }
 
-EXPORT_SYMBOL(mmc_wait_for_app_cmd);
-
 int mmc_app_set_bus_width(struct mmc_card *card, int width)
 {
 	struct mmc_command cmd = {};
-
-	BUG_ON(!card);
-	BUG_ON(!card->host);
 
 	cmd.opcode = SD_APP_SET_BUS_WIDTH;
 	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
@@ -139,15 +115,13 @@ int mmc_app_set_bus_width(struct mmc_card *card, int width)
 		return -EINVAL;
 	}
 
-	return mmc_wait_for_app_cmd(card->host, card, &cmd, MMC_CMD_RETRIES);
+	return mmc_wait_for_app_cmd(card->host, card, &cmd);
 }
 
 int mmc_send_app_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
 {
 	struct mmc_command cmd = {};
 	int i, err = 0;
-
-	BUG_ON(!host);
 
 	cmd.opcode = SD_APP_OP_COND;
 	if (mmc_host_is_spi(host))
@@ -157,7 +131,7 @@ int mmc_send_app_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
 	cmd.flags = MMC_RSP_SPI_R1 | MMC_RSP_R3 | MMC_CMD_BCR;
 
 	for (i = 100; i; i--) {
-		err = mmc_wait_for_app_cmd(host, NULL, &cmd, MMC_CMD_RETRIES);
+		err = mmc_wait_for_app_cmd(host, NULL, &cmd);
 		if (err)
 			break;
 
@@ -224,9 +198,6 @@ int mmc_send_relative_addr(struct mmc_host *host, unsigned int *rca)
 	int err;
 	struct mmc_command cmd = {};
 
-	BUG_ON(!host);
-	BUG_ON(!rca);
-
 	cmd.opcode = SD_SEND_RELATIVE_ADDR;
 	cmd.arg = 0;
 	cmd.flags = MMC_RSP_R6 | MMC_CMD_BCR;
@@ -248,10 +219,6 @@ int mmc_app_send_scr(struct mmc_card *card, u32 *scr)
 	struct mmc_data data = {};
 	struct scatterlist sg;
 	void *data_buf;
-
-	BUG_ON(!card);
-	BUG_ON(!card->host);
-	BUG_ON(!scr);
 
 	/* NOTE: caller guarantees scr is heap-allocated */
 
@@ -307,9 +274,6 @@ int mmc_sd_switch(struct mmc_card *card, int mode, int group,
 	struct mmc_data data = {};
 	struct scatterlist sg;
 
-	BUG_ON(!card);
-	BUG_ON(!card->host);
-
 	/* NOTE: caller guarantees resp is heap-allocated */
 
 	mode = !!mode;
@@ -351,10 +315,6 @@ int mmc_app_sd_status(struct mmc_card *card, void *ssr)
 	struct mmc_command cmd = {};
 	struct mmc_data data = {};
 	struct scatterlist sg;
-
-	BUG_ON(!card);
-	BUG_ON(!card->host);
-	BUG_ON(!ssr);
 
 	/* NOTE: caller guarantees ssr is heap-allocated */
 
