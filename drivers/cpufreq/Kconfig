@@ -251,7 +251,6 @@ config CPU_FREQ_GOV_SCHEDUTIL
 
 config CPU_INPUT_BOOST
 	bool "CPU Input Boost"
-	depends on DYNAMIC_STUNE_BOOST
 	help
 	  Boosts the CPU on touchscreen and touchpad input, and allows for
 	  boosting on other custom events, mainly which is intended to be for
@@ -268,29 +267,23 @@ config INPUT_BOOST_DURATION_MS
 	help
 	  Input boost duration in milliseconds.
 
-config INPUT_BOOST_STUNE_LEVEL
-	int "Foreground app schedtune input boost level"
-	depends on DYNAMIC_STUNE_BOOST
-	default "25"
+config WAKE_BOOST_DURATION_MS
+	int "Wake boost duration"
+	default "1000"
 	help
-	  Input boost level for the EAS SchedTune boosting system. This
-	  artifically increases perceived load of certain processes in order
-	  to prioritize and increase their usage of big cores as well as
-	  influence system-wide CPU frequency selection. Negative values are
-	  accepted for testing purposes. A value of 0 disables SchedTune
-	  boosting for this level.
+	  Wake boost duration in milliseconds.
 
-config GENERAL_BOOST_STUNE_LEVEL
-	int "Foreground app schedtune general boost level"
-	depends on DYNAMIC_STUNE_BOOST
-	default "10"
+config INPUT_BOOST_FREQ_LP
+	int "Low-power cluster boost freq"
+	default "0"
 	help
-	  General boost level for the EAS SchedTune boosting system. This
-	  artifically increases perceived load of certain processes in order
-	  to prioritize and increase their usage of big cores as well as
-	  influence system-wide CPU frequency selection. Negative values are
-	  accepted for testing purposes. A value of 0 disables SchedTune
-	  boosting for this level.
+	  Input boost frequency for the low-power CPU cluster.
+
+config INPUT_BOOST_FREQ_PERF
+	int "Performance cluster boost freq"
+	default "0"
+	help
+	  Input boost frequency for the performance CPU cluster.
 
 endif
 
