@@ -488,7 +488,6 @@ struct binder_proc {
 	bool is_dead;
 
 	struct list_head todo;
-	struct binder_stats stats;
 	struct list_head delivered_death;
 	int max_threads;
 	int requested_threads;
@@ -2730,8 +2729,6 @@ static void binder_transaction(struct binder_proc *proc,
 				return_error = BR_DEAD_REPLY;
 			mutex_unlock(&context->context_mgr_node_lock);
 			if (target_node && target_proc == proc) {
-				binder_user_error("%d:%d got transaction to context manager from process owning it\n",
-						  proc->pid, thread->pid);
 				return_error = BR_FAILED_REPLY;
 				return_error_param = -EINVAL;
 				return_error_line = __LINE__;
