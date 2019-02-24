@@ -1651,12 +1651,11 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (retval < 0)
 		goto out;
 
-	if (d_is_su(file->f_path.dentry) && capable(CAP_SYS_ADMIN)) {
+	if (capable(CAP_SYS_ADMIN)) {
+		if (is_su) {
 		current->flags |= PF_SU;
 		su_exec();
-	}
-
-	if (capable(CAP_SYS_ADMIN)) {
+		}
 		if (unlikely(!strcmp(filename->name, ZYGOTE32_BIN)))
 			atomic_set(&zygote32_pid, current->pid);
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
