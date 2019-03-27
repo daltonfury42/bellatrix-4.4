@@ -44,13 +44,6 @@ struct cpufreq_suspend_t {
 
 static DEFINE_PER_CPU(struct cpufreq_suspend_t, suspend_data);
 
-struct clk_update_data {
-	struct mutex update_lock;
-	ktime_t last_update;
-};
-
-static struct clk_update_data cpu_update_data[NR_CPUS];
-
 static int set_cpu_freq(struct cpufreq_policy *policy, unsigned int new_freq,
 			unsigned int index)
 {
