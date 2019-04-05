@@ -138,4 +138,12 @@ config CPU_INPUT_BOOST_MDSS_TIMEOUT
 	  Timeout in milliseconds to prevent general boosting on MDSS frame
 	  updates when interaction does not occur within this value.
 
+config FB_MSM_FRAME_BOOST_TIMEOUT
+	int "Post-input frame boost timeout"
+	default "3250"
+	help
+	  The timeout in milliseconds during which we boost the CPU and DDR bus
+	  when a new frame is committed to a rendering display, counting from when the
+	  last input event was received.
+
 endif
