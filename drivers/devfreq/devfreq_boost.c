@@ -7,7 +7,6 @@
 
 #include <linux/devfreq_boost.h>
 #include <linux/fb.h>
-#include <linux/display_state.h>
 #include <linux/input.h>
 
 struct boost_dev {
@@ -21,6 +20,7 @@ struct boost_dev {
 	unsigned long boost_freq;
 	unsigned long max_boost_expires;
 	unsigned long max_boost_jiffies;
+	bool disable;
 	spinlock_t lock;
 };
 
@@ -36,7 +36,7 @@ static void __devfreq_boost_kick(struct boost_dev *b)
 	unsigned long flags;
 
 	spin_lock_irqsave(&b->lock, flags);
-	if (!b->df) {
+	if (!b->df || b->disable) {
 		spin_unlock_irqrestore(&b->lock, flags);
 		return;
 	}
@@ -52,9 +52,6 @@ void devfreq_boost_kick(enum df_device device)
 	if (!d)
 		return;
 
-	if (!is_display_on())
-		return;
-
 	__devfreq_boost_kick(d->devices + device);
 }
 
@@ -64,7 +61,7 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	unsigned long flags, new_expires;
 
 	spin_lock_irqsave(&b->lock, flags);
-	if (!b->df) {
+	if (!b->df || b->disable) {
 		spin_unlock_irqrestore(&b->lock, flags);
 		return;
 	}
@@ -88,21 +85,7 @@ void devfreq_boost_kick_max(enum df_device device, unsigned int duration_ms)
 	if (!d)
 		return;
 
-	if (!is_display_on())
-		return;
-
 	__devfreq_boost_kick_max(d->devices + device, duration_ms);
-}
-
-void devfreq_boost_kick_wake(enum df_device device)
-{
-	struct df_boost_drv *d = df_boost_drv_g;
-
-	if (!d)
-		return;
-
-	__devfreq_boost_kick_max(d->devices + device,
-				 CONFIG_DEVFREQ_WAKE_BOOST_DURATION_MS);
 }
 
 void devfreq_register_boost_device(enum df_device device, struct devfreq *df)
@@ -147,6 +130,20 @@ static unsigned long devfreq_abs_min_freq(struct boost_dev *b)
 		b->abs_min_freq = 0;
 
 	return b->abs_min_freq;
+}
+
+static void devfreq_disable_boosting(struct df_boost_drv *d, bool disable)
+{
+	int i;
+
+	for (i = 0; i < DEVFREQ_MAX; i++) {
+		struct boost_dev *b = d->devices + i;
+		unsigned long flags;
+
+		spin_lock_irqsave(&b->lock, flags);
+		b->disable = disable;
+		spin_unlock_irqrestore(&b->lock, flags);
+	}
 }
 
 static void devfreq_unboost_all(struct df_boost_drv *d)
@@ -205,8 +202,8 @@ static void devfreq_input_boost(struct work_struct *work)
 
 static void devfreq_input_unboost(struct work_struct *work)
 {
-	struct boost_dev *b = container_of(to_delayed_work(work),
-					   typeof(*b), input_unboost);
+	struct boost_dev *b =
+		container_of(to_delayed_work(work), typeof(*b), input_unboost);
 	struct devfreq *df = b->df;
 
 	mutex_lock(&df->lock);
@@ -238,8 +235,8 @@ static void devfreq_max_boost(struct work_struct *work)
 
 static void devfreq_max_unboost(struct work_struct *work)
 {
-	struct boost_dev *b = container_of(to_delayed_work(work),
-					   typeof(*b), max_unboost);
+	struct boost_dev *b =
+		container_of(to_delayed_work(work), typeof(*b), max_unboost);
 	struct devfreq *df = b->df;
 
 	mutex_lock(&df->lock);
@@ -252,13 +249,18 @@ static int fb_notifier_cb(struct notifier_block *nb,
 			  unsigned long action, void *data)
 {
 	struct df_boost_drv *d = container_of(nb, typeof(*d), fb_notif);
+	struct fb_event *evdata = data;
+	int *blank = evdata->data;
+	bool screen_awake;
 
 	/* Parse framebuffer blank events as soon as they occur */
 	if (action != FB_EARLY_EVENT_BLANK)
 		return NOTIFY_OK;
 
 	/* Boost when the screen turns on and unboost when it turns off */
-	if (is_display_on()) {
+	screen_awake = *blank == FB_BLANK_UNBLANK;
+	devfreq_disable_boosting(d, !screen_awake);
+	if (screen_awake) {
 		int i;
 
 		for (i = 0; i < DEVFREQ_MAX; i++)
@@ -277,9 +279,6 @@ static void devfreq_boost_input_event(struct input_handle *handle,
 {
 	struct df_boost_drv *d = handle->handler->private;
 	int i;
-
-	if (!is_display_on())
-		return;
 
 	for (i = 0; i < DEVFREQ_MAX; i++)
 		__devfreq_boost_kick(d->devices + i);
