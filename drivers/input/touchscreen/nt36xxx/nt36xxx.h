@@ -173,6 +173,7 @@ struct nvt_ts_data {
 	bool tddi_tp_hw_reset;
 	bool gesture_enabled_when_resume;
 	bool gesture_disabled_when_resume;
+	struct proc_dir_entry *input_proc;
 };
 
 struct nvt_mode_switch {

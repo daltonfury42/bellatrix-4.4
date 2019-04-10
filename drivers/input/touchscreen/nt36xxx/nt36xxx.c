@@ -102,6 +102,8 @@ static void nvt_ts_late_resume(struct early_suspend *h);
 #define INPUT_EVENT_PALM_ON		13
 #define INPUT_EVENT_END				13
 
+#define PROC_SYMLINK_PATH "touchpanel"
+
 #if TOUCH_KEY_NUM > 0
 const uint16_t touch_key_array[TOUCH_KEY_NUM] = {
 	KEY_BACK,
@@ -1667,6 +1669,26 @@ static ssize_t nvt_panel_display_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%c\n", ts->lockdown_info[1]);
 }
 
+static ssize_t nvt_panel_wake_gesture_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+        const char c = ts->gesture_enabled ? '1' : '0';
+        return sprintf(buf, "%c\n", c);
+}
+
+static ssize_t nvt_panel_wake_gesture_store(struct device *dev,
+				     struct device_attribute *attr, const char *buf, size_t count)
+{
+	int i;
+
+	if (sscanf(buf, "%u", &i) == 1 && i < 2) {
+		ts->gesture_enabled = i;
+		return count;
+	} else {
+		dev_dbg(dev, "enable_dt2w write error\n");
+		return -EINVAL;
+	}
+}
 
 static ssize_t nt36xxx_grip_area_show(struct device *dev,
 				    struct device_attribute *attr, char *buf)
