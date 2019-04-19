@@ -3097,8 +3097,6 @@ err_copy_data_failed:
 err_binder_alloc_buf_failed:
 	if (secctx)
 		security_release_secctx(secctx, secctx_sz);
-err_get_secctx_failed:
-	kfree(tcomplete);
 err_alloc_tcomplete_failed:
 	kfree(t);
 err_alloc_t_failed:
